@@ -57,3 +57,21 @@ class WebdriverSpiderMiddleware(object):
                 if request is WebdriverRequest.WAITING:
                     continue  # Request has been enqueued, so drop it.
             yield request
+
+    def process_spider_exception(self, response, exception, spider):
+        """If there is an exception while parsing, feed the scrapy
+        scheduler with the next request from the queue in the
+        webdriver manager.
+        """
+        if isinstance(response.request, WebdriverRequest):
+
+            # release the lock that was acquired for this URL
+            self.manager.release(response.request.url)
+
+            # get the next request
+            next_request = self.manager.acquire_next()
+
+            # only schedule if the queue isn't empty
+            if next_request is not WebdriverRequest.WAITING:
+                scheduler = self.manager.crawler.engine.slots[spider].scheduler
+                scheduler.enqueue_request(next_request)
