@@ -19,6 +19,7 @@ class WebdriverManager(object):
         self._browser = crawler.settings.get('WEBDRIVER_BROWSER', None)
         self._user_agent = crawler.settings.get('USER_AGENT', None)
         self._options = crawler.settings.get('WEBDRIVER_OPTIONS', dict())
+        self._timeout = crawler.settings.get('WEBDRIVER_TIMEOUT', None)
         self._webdriver = None
         if isinstance(self._browser, basestring):
             if '.' in self._browser:
@@ -52,6 +53,8 @@ class WebdriverManager(object):
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
             self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
+            if self._timeout:
+                self._webdriver.set_page_load_timeout(self._timeout)
         return self._webdriver
 
     def acquire(self, request):
