@@ -3,6 +3,7 @@ import signal
 from scrapy import log
 from scrapy.utils.decorator import inthread
 from scrapy.utils.misc import load_object
+from scrapy.exceptions import IgnoreRequest
 
 from .http import WebdriverActionRequest, WebdriverRequest, WebdriverResponse
 
@@ -22,14 +23,19 @@ class WebdriverDownloadHandler(object):
         self._timeout = settings.get('WEBDRIVER_TIMEOUT')
         self._fallback_handler = load_object(FALLBACK_HANDLER)(settings)
 
-        # set the signal handler for the SIGALRM event
-        def handler(signum, frame):
-            raise WebdriverTimeout("'webdriver.get' took more than %s seconds." % self._timeout)
-        signal.signal(signal.SIGALRM, handler)
-
     def download_request(self, request, spider):
         """Return the result of the right download method for the request."""
         if self._enabled and isinstance(request, WebdriverRequest):
+
+            # set the signal handler for the SIGALRM event
+            def handler(signum, frame):
+                # stop the webdriver from executing anything
+                request.manager.webdriver.execute_script("window.stop()")
+                raise WebdriverTimeout("'webdriver.get' for '%s' took more than %s seconds." % (request.url, self._timeout))
+
+            # raise WebdriverTimeout("'webdriver.get' took more than %s seconds." % self._timeout)
+            signal.signal(signal.SIGALRM, handler)
+
             if isinstance(request, WebdriverActionRequest):
                 download = self._do_action_request
             else:
