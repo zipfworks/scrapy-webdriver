@@ -1,3 +1,5 @@
+import signal
+
 from scrapy import log
 from scrapy.utils.decorator import inthread
 from scrapy.utils.misc import load_object
@@ -6,6 +8,8 @@ from .http import WebdriverActionRequest, WebdriverRequest, WebdriverResponse
 
 FALLBACK_HANDLER = 'scrapy.core.downloader.handlers.http.HttpDownloadHandler'
 
+class WebdriverTimeout(Exception):
+    pass
 
 class WebdriverDownloadHandler(object):
     """This download handler uses webdriver, deferred in a thread.
@@ -15,7 +19,13 @@ class WebdriverDownloadHandler(object):
     """
     def __init__(self, settings):
         self._enabled = settings.get('WEBDRIVER_BROWSER') is not None
+        self._timeout = settings.get('WEBDRIVER_TIMEOUT')
         self._fallback_handler = load_object(FALLBACK_HANDLER)(settings)
+
+        # set the signal handler for the SIGALRM event
+        def handler(signum, frame):
+            raise WebdriverTimeout("'webdriver.get' took more than %s seconds." % self._timeout)
+        signal.signal(signal.SIGALRM, handler)
 
     def download_request(self, request, spider):
         """Return the result of the right download method for the request."""
@@ -32,7 +42,18 @@ class WebdriverDownloadHandler(object):
     def _download_request(self, request, spider):
         """Download a request URL using webdriver."""
         log.msg('Downloading %s with webdriver' % request.url, level=log.DEBUG)
+
+        # set a countdown timer for the webdriver.get
+        if self._timeout:
+            signal.alarm(self._timeout)
+
+        # make the request
         request.manager.webdriver.get(request.url)
+
+        # if the get finishes, defuse the bomb
+        if self._timeout:
+            signal.alarm(0)
+
         return WebdriverResponse(request.url, request.manager.webdriver)
 
     @inthread
