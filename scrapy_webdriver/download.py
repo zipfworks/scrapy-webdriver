@@ -1,6 +1,9 @@
 from scrapy import log
+from scrapy.http.response import Response
 from scrapy.utils.decorator import inthread
 from scrapy.utils.misc import load_object
+
+from selenium.common.exceptions import WebDriverException
 
 from .http import WebdriverActionRequest, WebdriverRequest, WebdriverResponse
 
@@ -32,7 +35,11 @@ class WebdriverDownloadHandler(object):
     def _download_request(self, request, spider):
         """Download a request URL using webdriver."""
         log.msg('Downloading %s with webdriver' % request.url, level=log.DEBUG)
-        request.manager.webdriver.get(request.url)
+        try:
+            request.manager.webdriver.get(request.url)
+        except WebDriverException as e:
+            log.msg('WebDriverException : %s'%(e.msg))
+            return Response(request.url, 500, request=request)
         return WebdriverResponse(request.url, request.manager.webdriver)
 
     @inthread
