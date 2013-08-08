@@ -74,7 +74,7 @@ class WebdriverSpiderMiddleware(object):
             # only schedule if the queue isn't empty
             if next_request is not WebdriverRequest.WAITING:
                 scheduler = self.manager.crawler.engine.slots[spider].scheduler
-                scheduler.enqueue_request(next_request)
+                scheduler.enqueue_request(next_request.replace(dont_filter=True))
 
 
 class WebdriverDownloaderMiddleware(object):
