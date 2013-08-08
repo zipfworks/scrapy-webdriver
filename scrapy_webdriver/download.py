@@ -29,11 +29,23 @@ class WebdriverDownloadHandler(object):
 
             # set the signal handler for the SIGALRM event
             def handler(signum, frame):
-                # stop the webdriver from executing anything
-                request.manager.webdriver.execute_script("window.stop()")
-                raise WebdriverTimeout("'webdriver.get' for '%s' took more than %s seconds." % (request.url, self._timeout))
 
-            # raise WebdriverTimeout("'webdriver.get' took more than %s seconds." % self._timeout)
+                # kill the selenium webdriver process (with SIGTERM,
+                # so that it kills both the primary process and the
+                # process that gets spawned)
+                request.manager.webdriver.service.process.send_signal(signal.SIGTERM)
+
+                # set the defunct _webdriver attribute back to
+                # original value of None, so that the next time it is
+                # accessed it is recreated.
+                request.manager._webdriver = None
+
+                # log an informative warning message
+                msg = "'webdriver.get' for '%s' took more than %s seconds." % \
+                    (request.url, self._timeout)
+                spider.log(msg, level=log.WARNING)
+
+            # bind the handler
             signal.signal(signal.SIGALRM, handler)
 
             if isinstance(request, WebdriverActionRequest):
@@ -53,15 +65,23 @@ class WebdriverDownloadHandler(object):
         if self._timeout:
             signal.alarm(self._timeout)
 
-        # make the request
-        request.manager.webdriver.get(request.url)
+        # make the get request
+        try:
+            request.manager.webdriver.get(request.url)
 
-        # if the get finishes, defuse the bomb
-        if self._timeout:
-            signal.alarm(0)
+        # if the get fails for any reason, set the webdriver attribute of the
+        # response to the exception that occurred
+        except Exception, exception:
+            exception.page_source = '<html><head></head><body></body></html>'
+            return WebdriverResponse(request.url, exception)
 
-        return WebdriverResponse(request.url, request.manager.webdriver)
-
+        # if the get finishes, defuse the bomb and return a response with the
+        # webdriver attached
+        else:
+            if self._timeout:
+                signal.alarm(0)
+            return WebdriverResponse(request.url, request.manager.webdriver)
+            
     @inthread
     def _do_action_request(self, request, spider):
         """Perform an action on a previously webdriver-loaded page."""
