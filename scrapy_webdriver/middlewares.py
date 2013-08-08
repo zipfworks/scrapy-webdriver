@@ -1,8 +1,8 @@
 from scrapy.exceptions import IgnoreRequest, NotConfigured
+from scrapy import log
 
-from .http import WebdriverActionRequest, WebdriverRequest
+from .http import WebdriverActionRequest, WebdriverRequest, WebdriverResponse
 from .manager import WebdriverManager
-
 
 class WebdriverSpiderMiddleware(object):
     """This middleware coordinates concurrent webdriver access attempts."""
@@ -75,3 +75,22 @@ class WebdriverSpiderMiddleware(object):
             if next_request is not WebdriverRequest.WAITING:
                 scheduler = self.manager.crawler.engine.slots[spider].scheduler
                 scheduler.enqueue_request(next_request)
+
+
+class WebdriverDownloaderMiddleware(object):
+    """This middleware handles webdriver.get failures."""
+
+    def process_response(self, request, response, spider):
+
+        # if there is a downloading error in the WebdriverResponse,
+        # make a nice error message
+        if isinstance(response, WebdriverResponse):
+            if isinstance(response.webdriver, Exception):
+                msg = 'Error while downloading %s with webdriver (%s)' % \
+                    (request.url, response.webdriver)
+                spider.log(msg, level=log.ERROR)
+
+        # but always still return the response. When there are errors,
+        # parse methods will probably fail.
+        return response
+
