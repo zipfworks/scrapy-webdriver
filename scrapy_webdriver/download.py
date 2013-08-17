@@ -3,7 +3,7 @@ import signal
 from scrapy import log
 from scrapy.utils.decorator import inthread
 from scrapy.utils.misc import load_object
-from scrapy.exceptions import IgnoreRequest
+from .manager import WebdriverManager
 
 from .http import WebdriverActionRequest, WebdriverRequest, WebdriverResponse
 
@@ -23,6 +23,10 @@ class WebdriverDownloadHandler(object):
         self._timeout = settings.get('WEBDRIVER_TIMEOUT')
         self._hang_timeout = settings.get('WEBDRIVER_HANG_TIMEOUT', None)
         self._fallback_handler = load_object(FALLBACK_HANDLER)(settings)
+        self._manager = WebdriverManager(settings)
+
+    def close(self):
+        self._manager.cleanup()
 
     def download_request(self, request, spider):
         """Return the result of the right download method for the request."""
@@ -36,12 +40,14 @@ class WebdriverDownloadHandler(object):
                     # kill the selenium webdriver process (with SIGTERM,
                     # so that it kills both the primary process and the
                     # process that gets spawned)
-                    request.manager.webdriver.service.process.send_signal(signal.SIGTERM)
+                    self._manager.webdriver.service.process.send_signal(signal.SIGTERM)
 
                     # set the defunct _webdriver attribute back to
                     # original value of None, so that the next time it is
                     # accessed it is recreated.
-                    request.manager._webdriver = None
+                    self._manager._webdriver = None
+
+                    self._manager.release()
 
                     # log an informative warning message
                     msg = "WebDriver.get for '%s' took more than WEBDRIVER_HANG_TIMEOUT (%ss)" % \
@@ -52,7 +58,8 @@ class WebdriverDownloadHandler(object):
                 signal.signal(signal.SIGALRM, alarm_handler)
 
             if isinstance(request, WebdriverActionRequest):
-                download = self._do_action_request
+                raise NotImplementedError()
+                #download = self._do_action_request
             else:
                 download = self._download_request
         else:
@@ -70,7 +77,8 @@ class WebdriverDownloadHandler(object):
 
         # make the get request
         try:
-            request.manager.webdriver.get(request.url)
+            self._manager.acquire(request)
+            self._manager.webdriver.get(request.url)
 
         # if the get fails for any reason, set the webdriver attribute of the
         # response to the exception that occurred
@@ -79,7 +87,7 @@ class WebdriverDownloadHandler(object):
             # since it's already failed, don't try to raise alarm anymore (this has no effect if the failure was due to the alarm)
             if self._hang_timeout:
                 spider.log('settings alarm to 0 on FAILURE', level=log.DEBUG)
-                spider.log('FAIL: ' + str(request.manager._webdriver), level=log.DEBUG)
+                spider.log('FAIL: ' + str(self._manager._webdriver), level=log.DEBUG)
                 signal.alarm(0)
 
             # set page_source to blank so that WebdriverResponse doesn't complain
@@ -91,8 +99,8 @@ class WebdriverDownloadHandler(object):
             spider.log(msg, level=log.ERROR)
 
             # since manager.webdriver is a @property, this will recreate connection
-            webdriver = request.manager.webdriver
-            spider.log('FAIL 2. THIS SHOULD BE WEBDRIVER: ' + str(request.manager._webdriver), level=log.DEBUG)
+            self._manager.webdriver
+            spider.log('FAIL 2. THIS SHOULD BE WEBDRIVER: ' + str(self._manager._webdriver), level=log.DEBUG)
             return WebdriverResponse(request.url, exception)
 
         # if the get finishes, defuse the bomb and return a response with the
@@ -102,15 +110,17 @@ class WebdriverDownloadHandler(object):
             # since it succeeded, don't raise any alarm
             if self._hang_timeout:
                 spider.log('settings alarm to 0 on SUCCESS', level=log.DEBUG)
-                spider.log('YEAH: ' + str(request.manager._webdriver), level=log.DEBUG)
+                spider.log('YEAH: ' + str(self._manager._webdriver), level=log.DEBUG)
                 signal.alarm(0)
 
             # return the correct response
-            return WebdriverResponse(request.url, request.manager.webdriver)
+            return WebdriverResponse(request.url, self._manager.webdriver)
+        finally:
+            self._manager.release()
             
     @inthread
     def _do_action_request(self, request, spider):
         """Perform an action on a previously webdriver-loaded page."""
         log.msg('Running webdriver actions %s' % request.url, level=log.DEBUG)
         request.actions.perform()
-        return WebdriverResponse(request.url, request.manager.webdriver)
+        return WebdriverResponse(request.url, self._manager.webdriver)

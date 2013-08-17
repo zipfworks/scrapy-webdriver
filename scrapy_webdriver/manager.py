@@ -2,7 +2,8 @@ import inspect
 from collections import deque
 from threading import Lock
 
-from scrapy.signals import engine_stopped
+from scrapy import log
+
 from scrapy_webdriver.http import WebdriverRequest, WebdriverActionRequest
 from selenium import webdriver
 
@@ -11,15 +12,13 @@ class WebdriverManager(object):
     """Manages the life cycle of a webdriver instance."""
     USER_AGENT_KEY = 'phantomjs.page.settings.userAgent'
 
-    def __init__(self, crawler):
-        self.crawler = crawler
+    def __init__(self, settings):
         self._lock = Lock()
-        self._wait_queue = deque()
-        self._wait_inpage_queue = deque()
-        self._browser = crawler.settings.get('WEBDRIVER_BROWSER', None)
-        self._user_agent = crawler.settings.get('USER_AGENT', None)
-        self._options = crawler.settings.get('WEBDRIVER_OPTIONS', dict())
-        self._timeout = crawler.settings.get('WEBDRIVER_TIMEOUT', None)
+        self._count = 0
+        self._browser = settings.get('WEBDRIVER_BROWSER', None)
+        self._user_agent = settings.get('USER_AGENT', None)
+        self._options = settings.get('WEBDRIVER_OPTIONS', dict())
+        self._timeout = settings.get('WEBDRIVER_TIMEOUT', None)
         self._webdriver = None
         if isinstance(self._browser, basestring):
             if '.' in self._browser:
@@ -52,7 +51,6 @@ class WebdriverManager(object):
             options = self._options
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
-            self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
             if self._timeout:
                 self._webdriver.set_page_load_timeout(self._timeout)
         return self._webdriver
@@ -61,38 +59,19 @@ class WebdriverManager(object):
         """Acquire lock for the request, or enqueue request upon failure."""
         assert isinstance(request, WebdriverRequest), \
             'Only a WebdriverRequest can use the webdriver instance.'
-        if self._lock.acquire(False):
-            request.manager = self
-            return request
-        else:
-            if isinstance(request, WebdriverActionRequest):
-                queue = self._wait_inpage_queue
-            else:
-                queue = self._wait_queue
-            queue.append(request)
+        self._count+=1
+        log.msg("grabbing webdriver lock",level=log.INFO)
+        self._lock.acquire(True)
+        log.msg("got webdriver lock",level=log.INFO)
 
-    def acquire_next(self):
-        """Return the next waiting request, if any.
-
-        In-page requests are returned first.
-
-        """
-        try:
-            request = self._wait_inpage_queue.popleft()
-        except IndexError:
-            try:
-                request = self._wait_queue.popleft()
-            except IndexError:
-                return
-        return self.acquire(request)
-
-    def release(self, msg):
+    def release(self):
         """Release the the webdriver instance's lock."""
+        log.msg("releasing webdriver lock",level=log.INFO)
         self._lock.release()
+        self._count-=1
 
-    def _cleanup(self):
+    def cleanup(self):
         """Clean up when the scrapy engine stops."""
         if self._webdriver is not None:
             self._webdriver.quit()
-            assert len(self._wait_queue) + len(self._wait_inpage_queue) == 0, \
-                'Webdriver queue not empty at engine stop.'
+            assert self._count!=0, 'Webdriver queue not empty at engine stop.'
