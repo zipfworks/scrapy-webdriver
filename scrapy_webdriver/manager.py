@@ -1,6 +1,7 @@
 import inspect
 from collections import deque
 from threading import Lock
+import copy
 
 from scrapy.signals import engine_stopped
 from scrapy_webdriver.http import WebdriverRequest, WebdriverActionRequest
@@ -49,7 +50,7 @@ class WebdriverManager(object):
                 cap_attr = 'capabilities'
             else:
                 cap_attr = 'desired_capabilities'
-            options = self._options
+            options = copy.deepcopy(self._options)
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
             self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
