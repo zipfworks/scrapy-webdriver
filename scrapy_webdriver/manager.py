@@ -1,6 +1,7 @@
 import inspect
 from collections import deque
 from threading import Lock
+import copy
 
 from scrapy import log
 
@@ -48,7 +49,7 @@ class WebdriverManager(object):
                 cap_attr = 'capabilities'
             else:
                 cap_attr = 'desired_capabilities'
-            options = self._options
+            options = copy.deepcopy(self._options)
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
             if self._timeout:
