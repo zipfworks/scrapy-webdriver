@@ -2,6 +2,7 @@ import inspect
 from collections import deque
 from threading import Lock
 import copy
+import thread
 
 from scrapy import log
 
@@ -68,8 +69,13 @@ class WebdriverManager(object):
     def release(self):
         """Release the the webdriver instance's lock."""
         log.msg("releasing webdriver lock",level=log.INFO)
-        self._lock.release()
-        self._count-=1
+        try:
+            self._lock.release()
+            self._count-=1
+        except thread.error:
+            # XXX: The lock can be released by both the timeout alert and
+            # finishing the download. Ignore the double release for now.
+            pass
 
     def cleanup(self):
         """Clean up when the scrapy engine stops."""
