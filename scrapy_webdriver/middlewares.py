@@ -85,9 +85,9 @@ class WebdriverDownloaderMiddleware(object):
         # if there is a downloading error in the WebdriverResponse,
         # make a nice error message
         if isinstance(response, WebdriverResponse):
-            if isinstance(response.webdriver, Exception):
+            if response.exception:
                 msg = 'Error while downloading %s with webdriver (%s)' % \
-                    (request.url, response.webdriver)
+                    (request.url, response.exception)
                 spider.log(msg, level=log.ERROR)
 
         # but always still return the response. When there are errors,

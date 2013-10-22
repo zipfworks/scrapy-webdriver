@@ -33,12 +33,13 @@ class WebdriverActionRequest(WebdriverRequest):
 
 class WebdriverResponse(TextResponse):
     """A Response that will feed the webdriver page into its body."""
-    def __init__(self, url, webdriver, **kwargs):
+    def __init__(self, url, webdriver, exception=None, **kwargs):
         kwargs.setdefault('body', webdriver.page_source)
         kwargs.setdefault('encoding', 'utf-8')
         super(WebdriverResponse, self).__init__(url, **kwargs)
         self.actions = ActionChains(webdriver)
         self.webdriver = webdriver
+        self.exception = exception
 
     def action_request(self, **kwargs):
         """Return a Request object to perform the recorded actions."""

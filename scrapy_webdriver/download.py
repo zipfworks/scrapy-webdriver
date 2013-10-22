@@ -93,7 +93,7 @@ class WebdriverDownloadHandler(object):
             # since manager.webdriver is a @property, this will recreate connection
             webdriver = request.manager.webdriver
             spider.log('FAIL 2. THIS SHOULD BE WEBDRIVER: ' + str(request.manager._webdriver), level=log.DEBUG)
-            return WebdriverResponse(request.url, exception)
+            return WebdriverResponse(request.url, request.manager.webdriver, exception)
 
         # if the get finishes, defuse the bomb and return a response with the
         # webdriver attached
