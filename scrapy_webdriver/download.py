@@ -36,7 +36,11 @@ class WebdriverDownloadHandler(object):
                     # kill the selenium webdriver process (with SIGTERM,
                     # so that it kills both the primary process and the
                     # process that gets spawned)
-                    request.manager.webdriver.service.process.send_signal(signal.SIGTERM)
+                    try:
+                        service = request.manager.webdriver.service
+                        service.process.send_signal(signal.SIGTERM)
+                    except AttributeError:
+                        pass
 
                     # set the defunct _webdriver attribute back to
                     # original value of None, so that the next time it is
