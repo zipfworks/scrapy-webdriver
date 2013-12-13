@@ -17,6 +17,7 @@ class WebdriverManager(object):
         self._wait_queue = deque()
         self._wait_inpage_queue = deque()
         self._browser = crawler.settings.get('WEBDRIVER_BROWSER', None)
+        self._implicit_wait = crawler.settings.get('WEBDRIVER_IMPLICIT_WAIT', 0)
         self._user_agent = crawler.settings.get('USER_AGENT', None)
         self._options = crawler.settings.get('WEBDRIVER_OPTIONS', dict())
         self._webdriver = None
@@ -51,6 +52,9 @@ class WebdriverManager(object):
             options = self._options
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
+            # Set the amount of seconds the webdriver should implicitly wait to find
+            # elements if they are not immediately available.
+            self._webdriver.implicitly_wait(self._implicit_wait)
             self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
         return self._webdriver
 
