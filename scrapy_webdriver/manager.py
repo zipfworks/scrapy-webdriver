@@ -1,3 +1,4 @@
+import copy
 import inspect
 from collections import deque
 from threading import Lock
@@ -49,7 +50,7 @@ class WebdriverManager(object):
                 cap_attr = 'capabilities'
             else:
                 cap_attr = 'desired_capabilities'
-            options = self._options
+            options = copy.deepcopy(self._options)
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
             # Set the amount of seconds the webdriver should implicitly wait to find
