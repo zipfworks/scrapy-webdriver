@@ -19,6 +19,8 @@ class WebdriverManager(object):
         self._wait_inpage_queue = deque()
         self._browser = crawler.settings.get('WEBDRIVER_BROWSER', None)
         self._implicit_wait = crawler.settings.get('WEBDRIVER_IMPLICIT_WAIT', 0)
+        self._page_load_timeout = crawler.settings.get('WEBDRIVER_PAGE_LOAD_TIMEOUT', 0)
+        self._script_timeout = crawler.settings.get('WEBDRIVER_SCRIPT_TIMEOUT', 0)
         self._user_agent = crawler.settings.get('USER_AGENT', None)
         self._options = crawler.settings.get('WEBDRIVER_OPTIONS', dict())
         self._webdriver = None
@@ -53,9 +55,15 @@ class WebdriverManager(object):
             options = copy.deepcopy(self._options)
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
-            # Set the amount of seconds the webdriver should implicitly wait to find
-            # elements if they are not immediately available.
+            # Set the following timeout related settings on the webdriver:
+            # * the amount of seconds to wait when an element cannot be found.
+            # * the amount of seconds to wait for a page to load.
+            # * the amount of seconds to wait for a script to execute.
+            # For a more detailed explanation of these settings, please refer to
+            # the Selenium documentation.
             self._webdriver.implicitly_wait(self._implicit_wait)
+            self._webdriver.set_page_load_timeout(self._page_load_timeout)
+            self._webdriver.set_script_timeout(self._script_timeout)
             self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
         return self._webdriver
 
