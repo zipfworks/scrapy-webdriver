@@ -19,11 +19,11 @@ class WebdriverManager(object):
         self._wait_inpage_queue = deque()
         self._browser = crawler.settings.get('WEBDRIVER_BROWSER', None)
         self._implicit_wait = crawler.settings.get('WEBDRIVER_IMPLICIT_WAIT', 0)
-        self._page_load_timeout = crawler.settings.get('WEBDRIVER_PAGE_LOAD_TIMEOUT', 0)
-        self._script_timeout = crawler.settings.get('WEBDRIVER_SCRIPT_TIMEOUT', 0)
+        timeout = crawler.settings.get('WEBDRIVER_TIMEOUT', None)
+        self._page_load_timeout = crawler.settings.get( 'WEBDRIVER_PAGE_LOAD_TIMEOUT', timeout)
+        self._script_timeout = crawler.settings.get( 'WEBDRIVER_SCRIPT_TIMEOUT', timeout)
         self._user_agent = crawler.settings.get('USER_AGENT', None)
         self._options = crawler.settings.get('WEBDRIVER_OPTIONS', dict())
-        self._timeout = crawler.settings.get('WEBDRIVER_TIMEOUT', None)
         self._webdriver = None
         if isinstance(self._browser, basestring):
             if '.' in self._browser:
@@ -63,11 +63,11 @@ class WebdriverManager(object):
             # For a more detailed explanation of these settings, please refer to
             # the Selenium documentation.
             self._webdriver.implicitly_wait(self._implicit_wait)
-            self._webdriver.set_page_load_timeout(self._page_load_timeout)
-            self._webdriver.set_script_timeout(self._script_timeout)
+            if self._script_timeout:
+                self._webdriver.set_script_timeout(self._script_timeout)
+            if self._page_load_timeout:
+                self._webdriver.set_page_load_timeout(self._page_load_timeout)
             self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
-            if self._timeout:
-                self._webdriver.set_page_load_timeout(self._timeout)
         return self._webdriver
 
     def acquire(self, request):
