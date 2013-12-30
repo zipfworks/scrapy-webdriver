@@ -29,6 +29,11 @@ class WebdriverActionRequest(WebdriverRequest):
         kwargs.setdefault('response', self._response)
         kwargs.setdefault('actions', self.actions)
         return super(WebdriverActionRequest, self).replace(*args, **kwargs)
+    
+    def __str__(self):
+        return "<ACTION %s>" % (self.url)
+
+    __repr__ = __str__
 
 
 class WebdriverResponse(TextResponse):
