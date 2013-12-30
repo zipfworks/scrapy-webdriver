@@ -47,6 +47,9 @@ class WebdriverXPathSelector(XPathSelector):
                 xpath = xpath[:-len(name) - 2]
             elif parens and name == 'text':
                 xpath = xpath[:-len(name) - 3]
+                # do the right thing for /some/div//text()
+                if xpath.endswith('/'):
+                    xpath = xpath+'/*'
         result = self._make_result(xpathev.find_elements_by_xpath(xpath))
         if atsign:
             result = (_NodeAttribute(r.element, name) for r in result)
