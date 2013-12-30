@@ -2,7 +2,6 @@ import copy
 import inspect
 from collections import deque
 from threading import Lock
-import copy
 
 from scrapy.signals import engine_stopped
 from scrapy_webdriver.http import WebdriverRequest, WebdriverActionRequest
