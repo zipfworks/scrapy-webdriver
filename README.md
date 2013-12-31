@@ -8,6 +8,8 @@ integration problems. Use at your own risk.
 
 That being said, it works for me, in all its non-blocking glory.
 
+It works with scrapy 0.18.0. It does not work with scrapy 0.20.2.
+
 Installation
 =============
 
