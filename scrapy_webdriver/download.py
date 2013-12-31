@@ -86,9 +86,6 @@ class WebdriverDownloadHandler(object):
                 spider.log('FAIL: ' + str(request.manager._webdriver), level=log.DEBUG)
                 signal.alarm(0)
 
-            # set page_source to blank so that WebdriverResponse doesn't complain
-            exception.page_source = '<html><head></head><body></body></html>'
-
             # log a nice error message
             msg = 'Error while downloading %s with webdriver (%s)' % \
                 (request.url, exception)

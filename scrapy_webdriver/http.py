@@ -39,7 +39,12 @@ class WebdriverActionRequest(WebdriverRequest):
 class WebdriverResponse(TextResponse):
     """A Response that will feed the webdriver page into its body."""
     def __init__(self, url, webdriver, exception=None, **kwargs):
-        kwargs.setdefault('body', webdriver.page_source)
+        # If the response resulted in an exception, the body may not exist
+        if exception:
+            page_source = '<html><head></head><body></body></html>'
+        else:
+            page_source = webdriver.page_source
+        kwargs.setdefault('body', page_source)
         kwargs.setdefault('encoding', 'utf-8')
         super(WebdriverResponse, self).__init__(url, **kwargs)
         self.actions = ActionChains(webdriver)
