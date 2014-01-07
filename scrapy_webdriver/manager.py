@@ -48,26 +48,31 @@ class WebdriverManager(object):
     def webdriver(self):
         """Return the webdriver instance, instantiate it if necessary."""
         if self._webdriver is None:
-            short_arg_classes = (webdriver.Firefox, webdriver.Ie)
-            if issubclass(self._browser, short_arg_classes):
-                cap_attr = 'capabilities'
-            else:
-                cap_attr = 'desired_capabilities'
-            options = copy.deepcopy(self._options)
-            options[cap_attr] = self._desired_capabilities
-            self._webdriver = self._browser(**options)
-            # Set the following timeout related settings on the webdriver:
-            # * the amount of seconds to wait when an element cannot be found.
-            # * the amount of seconds to wait for a page to load.
-            # * the amount of seconds to wait for a script to execute.
-            # For a more detailed explanation of these settings, please refer to
-            # the Selenium documentation.
-            self._webdriver.implicitly_wait(self._implicit_wait)
-            if self._script_timeout:
-                self._webdriver.set_script_timeout(self._script_timeout)
-            if self._page_load_timeout:
-                self._webdriver.set_page_load_timeout(self._page_load_timeout)
-            self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
+            self.reconnect()
+        return self._webdriver
+
+    def reconnect(self):
+        """Connect to a new instance of the webdriver"""
+        short_arg_classes = (webdriver.Firefox, webdriver.Ie)
+        if issubclass(self._browser, short_arg_classes):
+            cap_attr = 'capabilities'
+        else:
+            cap_attr = 'desired_capabilities'
+        options = copy.deepcopy(self._options)
+        options[cap_attr] = self._desired_capabilities
+        self._webdriver = self._browser(**options)
+        # Set the following timeout related settings on the webdriver:
+        # * the amount of seconds to wait when an element cannot be found.
+        # * the amount of seconds to wait for a page to load.
+        # * the amount of seconds to wait for a script to execute.
+        # For a more detailed explanation of these settings, please refer to
+        # the Selenium documentation.
+        self._webdriver.implicitly_wait(self._implicit_wait)
+        if self._script_timeout:
+            self._webdriver.set_script_timeout(self._script_timeout)
+        if self._page_load_timeout:
+            self._webdriver.set_page_load_timeout(self._page_load_timeout)
+        self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
         return self._webdriver
 
     def acquire(self, request):
