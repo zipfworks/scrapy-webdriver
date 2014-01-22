@@ -1,11 +1,11 @@
 import re
 
-from scrapy.selector import XPathSelector, XPathSelectorList
+from scrapy.selector import Selector, XPathSelectorList
 
 _UNSUPPORTED_XPATH_ENDING = re.compile(r'.*/((@)?([^/()]+)(\(\))?)$')
 
 
-class WebdriverXPathSelector(XPathSelector):
+class WebdriverXPathSelector(Selector):
     """Scrapy selector that works using XPath selectors in a remote browser.
 
     Based on some code from Marconi Moreto:
@@ -26,7 +26,7 @@ class WebdriverXPathSelector(XPathSelector):
         return [self.__class__(webdriver=self.webdriver, element=e)
                 for e in result]
 
-    def select(self, xpath):
+    def xpath(self, xpath):
         """Return elements using the webdriver `find_elements_by_xpath` method.
 
         Some XPath features are not supported by the webdriver implementation.
@@ -55,12 +55,13 @@ class WebdriverXPathSelector(XPathSelector):
             result = (_NodeAttribute(r.element, name) for r in result)
         elif parens and result and name == 'text':
             result = (_TextNode(self.webdriver, r.element) for r in result)
-        return XPathSelectorList(result)
+        return SelectorList(result)
+
 
     def select_script(self, script, *args):
         """Return elements using JavaScript snippet execution."""
         result = self.webdriver.execute_script(script, *args)
-        return XPathSelectorList(self._make_result(result))
+        return SelectorList(self._make_result(result))
 
     def extract(self):
         """Extract text from selenium element."""

@@ -8,7 +8,7 @@ integration problems. Use at your own risk.
 
 That being said, it works for me, in all its non-blocking glory.
 
-It works with scrapy 0.18.0. It does not work with scrapy 0.20.2.
+If you are using version 0.18.2 or later, the setting LOG_STDOUT must be False.
 
 Installation
 =============
