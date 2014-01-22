@@ -8,14 +8,21 @@ integration problems. Use at your own risk.
 
 That being said, it works for me, in all its non-blocking glory.
 
-If you are using version 0.18.2 or later, the setting LOG_STDOUT must be False.
+
+Issues
+======
+
+* If you are using scrapy version 0.18.2 or later, the setting LOG_STDOUT must
+  be False.
+* I suspect WebdriverActionRequest and ActionChain are broken. I am not using
+  them.
 
 Installation
 =============
 
 For now it's not on pypi, but this should work:
 
-    pip install https://github.com/sosign/scrapy-webdriver/archive/master.zip
+    pip install https://github.com/zipfworks/scrapy-webdriver/archive/master.zip
 
 Or something like this, in setup.py:
 
@@ -25,7 +32,7 @@ Or something like this, in setup.py:
             ...,
         ],
         dependency_links=[
-            'https://github.com/sosign/scrapy-webdriver/archive/master.zip#egg=scrapy_webdriver',
+            'https://github.com/zipfworks/scrapy-webdriver/archive/master.zip#egg=scrapy_webdriver',
         ],
         ...,
         )
