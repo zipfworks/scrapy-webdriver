@@ -1,8 +1,9 @@
 import re
 
-from scrapy.selector import Selector, XPathSelectorList
+from scrapy.selector import Selector, SelectorList
 
 _UNSUPPORTED_XPATH_ENDING = re.compile(r'.*/((@)?([^/()]+)(\(\))?)$')
+_UNSUPPORTED_CSS_ENDING = re.compile(r'.*(::text|::attr\(([\w-]+)\))$')
 
 
 class WebdriverXPathSelector(Selector):
@@ -25,6 +26,22 @@ class WebdriverXPathSelector(Selector):
             result = [result]
         return [self.__class__(webdriver=self.webdriver, element=e)
                 for e in result]
+
+    def css(self, css):
+        """Return elements using the webdriver `find_elements_by_css` method.
+        """
+        elem = self.element if self.element else self.webdriver
+        ending = _UNSUPPORTED_CSS_ENDING.match(css)
+        if ending:
+            psuedo, attr = ending.groups()
+            css = css[:-len(psuedo)]
+        result = self._make_result(elem.find_elements_by_css_selector(css))
+        if ending:
+            if psuedo == '::text':
+                result = (_TextNode(self.webdriver, r.element) for r in result)
+            elif attr:
+                result = (_NodeAttribute(r.element, attr) for r in result)
+        return SelectorList(result)
 
     def xpath(self, xpath):
         """Return elements using the webdriver `find_elements_by_xpath` method.
@@ -65,7 +82,9 @@ class WebdriverXPathSelector(Selector):
 
     def extract(self):
         """Extract text from selenium element."""
-        return self.element.text if self.element else None
+        # when running in pdb, extract can be called by __str__ before __init__
+        element = self.getattr('element')
+        return element.text if element else None
 
 
 class _NodeAttribute(object):
