@@ -29,6 +29,9 @@ class WebdriverXPathSelector(Selector):
 
     def css(self, css):
         """Return elements using the webdriver `find_elements_by_css` method.
+        This add support for useful css psuedo-selectors:
+          - a.clicky::attr(href)
+          - h2.heading::text
         """
         elem = self.element if self.element else self.webdriver
         ending = _UNSUPPORTED_CSS_ENDING.match(css)
