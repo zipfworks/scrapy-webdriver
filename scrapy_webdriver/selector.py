@@ -86,8 +86,18 @@ class WebdriverXPathSelector(Selector):
     def extract(self):
         """Extract text from selenium element."""
         # when running in pdb, extract can be called by __str__ before __init__
-        element = self.getattr('element')
+        element = getattr(self,'element')
         return element.text if element else None
+
+    def __str__(self):
+        # Don't crash when extract returns None
+        data_str = self.extract()
+        data = repr(data_str[:40]) if data_str else repr(data_str)
+        return "<%s xpath=%r data=%s>" % (type(self).__name__, self._expr, data)
+    __repr__ = __str__
+
+    def extract_html(self):
+        return self.element.get_attribute('innerHTML')
 
 
 class _NodeAttribute(object):
