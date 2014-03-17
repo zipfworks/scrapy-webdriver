@@ -6,6 +6,24 @@ _UNSUPPORTED_XPATH_ENDING = re.compile(r'.*/((@)?([^/()]+)(\(\))?)$')
 _UNSUPPORTED_CSS_ENDING = re.compile(r'.*(::text|::attr\(([\w-]+)\))$')
 
 
+GET_TEXT_CONTENT = """
+var getTextContent = function(node,recurse) {
+    var children = node.childNodes;
+    var content = [];
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (child.nodeType == Node.TEXT_NODE) {
+            content.push(child.textContent);
+        }
+        if (recurse && child.nodeType == Node.ELEMENT_NODE) {
+            content.push.apply(content,getTextContent(child,true));
+        }
+    }
+    return content;
+}
+return getTextContent.apply(null, arguments)
+"""
+
 class WebdriverXPathSelector(Selector):
     """Scrapy selector that works using XPath selectors in a remote browser.
 
@@ -21,30 +39,27 @@ class WebdriverXPathSelector(Selector):
         self.webdriver = webdriver or response.webdriver
         self.element = element
 
-    def _make_result(self, result):
-        if type(result) is not list:
-            result = [result]
-        return [self.__class__(webdriver=self.webdriver, element=e)
-                for e in result]
-
     def css(self, css):
         """Return elements using the webdriver `find_elements_by_css` method.
         This adds support for useful css psuedo-selectors:
           - a.clicky::attr(href)
           - h2.heading::text
+          - h2.heading ::text
         """
         elem = self.element if self.element else self.webdriver
+        psuedo, recurse, attr = None, False, None
         ending = _UNSUPPORTED_CSS_ENDING.match(css)
         if ending:
             psuedo, attr = ending.groups()
             css = css[:-len(psuedo)]
-        result = self._make_result(elem.find_elements_by_css_selector(css))
-        if ending:
-            if psuedo == '::text':
-                result = (_TextNode(self.webdriver, r.element) for r in result)
-            elif attr:
-                result = (_NodeAttribute(r.element, attr) for r in result)
-        return SelectorList(result)
+            # "h2 ::text" visits child nodes recursively"
+            if css.endswith(' '):
+                recurse = True
+                css = css[:-1]
+
+        elems = elem.find_elements_by_css_selector(css)
+        is_text = (psuedo == '::text')
+        return self._make_selector_list(elems, is_text, recurse, attr)
 
     def xpath(self, xpath):
         """Return elements using the webdriver `find_elements_by_xpath` method.
@@ -52,6 +67,7 @@ class WebdriverXPathSelector(Selector):
         Some XPath features are not supported by the webdriver implementation.
         Namely, selecting text content or attributes:
           - /some/element/text()
+          - /some/element//text()
           - /some/element/@attribute
 
         This function offers workarounds for both, so it should be safe to use
@@ -61,32 +77,58 @@ class WebdriverXPathSelector(Selector):
         xpathev = self.element if self.element else self.webdriver
         ending = _UNSUPPORTED_XPATH_ENDING.match(xpath)
         atsign = parens = None
+        is_text, recurse, attr = False, False, None
         if ending:
-            match, atsign, name, parens = ending.groups()
+            _, atsign, name, parens = ending.groups()
             if atsign:
                 xpath = xpath[:-len(name) - 2]
+                attr = name
             elif parens and name == 'text':
                 xpath = xpath[:-len(name) - 3]
+                is_text = True
                 # do the right thing for /some/div//text()
                 if xpath.endswith('/'):
-                    xpath = xpath+'/*'
-        result = self._make_result(xpathev.find_elements_by_xpath(xpath))
-        if atsign:
-            result = (_NodeAttribute(r.element, name) for r in result)
-        elif parens and result and name == 'text':
-            result = (_TextNode(self.webdriver, r.element) for r in result)
-        return SelectorList(result)
+                    xpath = xpath[:-1]
+                    recurse = True
 
+        elems = xpathev.find_elements_by_xpath(xpath)
+        return self._make_selector_list(elems, is_text, recurse, attr)
 
     def select_script(self, script, *args):
         """Return elements using JavaScript snippet execution."""
         result = self.webdriver.execute_script(script, *args)
         return SelectorList(self._make_result(result))
 
+    def _make_result(self, result):
+        if type(result) is not list:
+            result = [result]
+        return [self.__class__(webdriver=self.webdriver, element=e)
+                for e in result]
+
+    def _make_selector_list(self, elems, is_text, text_recurse, attr):
+        if type(elems) is not list:
+            elems = [elems]
+
+        if is_text:
+            return SelectorList(
+                _TextNode(self.webdriver, s)
+                for elem in elems
+                for s in self._text_content(elem, text_recurse)
+            )
+
+        selectors = self._make_result(elems)
+        if attr:
+            selectors = (_NodeAttribute(s.element, attr) for s in selectors)
+        return SelectorList(selectors)
+
+    def _text_content(self, element, recurse):
+        return self.webdriver.execute_script(GET_TEXT_CONTENT,
+                                             element, recurse)
+
     def extract(self):
         """Extract text from selenium element."""
         # when running in pdb, extract can be called by __str__ before __init__
-        element = getattr(self,'element')
+        element = getattr(self, 'element')
         return element.text if element else None
 
     def __str__(self):
@@ -112,18 +154,10 @@ class _NodeAttribute(object):
 
 class _TextNode(object):
     """Works around webdriver XPath inability to select text nodes.
-
-    It's a rather contrived element API implementation, it should probably
-    be expanded.
-
     """
-    JS_FIND_FIRST_TEXT_NODE = ('return arguments[0].firstChild '
-                               '&& arguments[0].firstChild.nodeValue')
-
-    def __init__(self, webdriver, element):
-        self.element = element
+    def __init__(self, webdriver, text):
+        self.text = text
         self.webdriver = webdriver
 
     def extract(self):
-        args = (self.JS_FIND_FIRST_TEXT_NODE, self.element)
-        return self.webdriver.execute_script(*args)
+        return self.text
