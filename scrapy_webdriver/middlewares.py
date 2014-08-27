@@ -68,10 +68,8 @@ class WebdriverSpiderMiddleware(object):
             # release the lock that was acquired for this URL
             self.manager.release(response.request.url)
 
-            # get the next request
             next_request = self.manager.acquire_next()
-            # Skip this request and go to the next one
-            return [response.request]
+            return [next_request]
 
 class WebdriverDownloaderMiddleware(object):
     """This middleware handles webdriver.get failures."""
