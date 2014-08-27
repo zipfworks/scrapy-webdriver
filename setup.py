@@ -32,6 +32,7 @@ class PyTest(TestCommand):
     def run_tests(self):
         # Import here, cause outside the eggs aren't loaded
         import pytest
+        #errno = pytest.main('--pdb',self.test_args)
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 

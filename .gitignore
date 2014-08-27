@@ -4,6 +4,9 @@
 .pydevproject
 .settings
 
+# Vim
+*.swp
+
 # Python
 *.py[co]
 
