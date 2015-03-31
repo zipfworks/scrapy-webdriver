@@ -99,7 +99,6 @@ class WebdriverDownloadHandler(object):
 
             # since it succeeded, don't raise any alarm
             if self._hang_timeout:
-                spider.log('settings alarm to 0 on SUCCESS', level=log.DEBUG)
                 signal.alarm(0)
 
             # return the correct response
