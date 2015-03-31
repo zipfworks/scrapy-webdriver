@@ -66,7 +66,6 @@ class WebdriverDownloadHandler(object):
     @inthread
     def _download_request(self, request, spider):
         """Download a request URL using webdriver."""
-        spider.log('Downloading %s with webdriver' % request.url, level=log.DEBUG)
 
         # set a countdown timer for the webdriver.get
         if self._hang_timeout:
@@ -83,7 +82,6 @@ class WebdriverDownloadHandler(object):
             # since it's already failed, don't try to raise alarm anymore (this has no effect if the failure was due to the alarm)
             if self._hang_timeout:
                 spider.log('settings alarm to 0 on FAILURE', level=log.DEBUG)
-                spider.log('FAIL: ' + str(request.manager._webdriver), level=log.DEBUG)
                 signal.alarm(0)
 
             # log a nice error message
@@ -102,7 +100,6 @@ class WebdriverDownloadHandler(object):
             # since it succeeded, don't raise any alarm
             if self._hang_timeout:
                 spider.log('settings alarm to 0 on SUCCESS', level=log.DEBUG)
-                spider.log('YEAH: ' + str(request.manager._webdriver), level=log.DEBUG)
                 signal.alarm(0)
 
             # return the correct response
