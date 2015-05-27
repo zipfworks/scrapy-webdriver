@@ -68,6 +68,7 @@ class WebdriverManager(object):
         if not self._remote_webdriver or browser == "phantomjs":
             self._webdriver = self._browser(**options)
         else:
+            #TODO: need to figure out how to pass in the browser options
             self._webdriver = webdriver.Remote(command_executor=self._remote_webdriver+"wd/hub",desired_capabilities={ "browserName": browser })
         # Set the following timeout related settings on the webdriver:
         # * the amount of seconds to wait when an element cannot be found.
