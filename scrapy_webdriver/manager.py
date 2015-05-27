@@ -18,6 +18,8 @@ class WebdriverManager(object):
         self._wait_queue = deque()
         self._wait_inpage_queue = deque()
         self._browser = crawler.settings.get('WEBDRIVER_BROWSER', None)
+        self._browser_name = crawler.settings.get('WEBDRIVER_BROWSER', None)
+        self._remote_webdriver = crawler.settings.get('REMOTE_WEBDRIVER', None)
         self._implicit_wait = crawler.settings.get('WEBDRIVER_IMPLICIT_WAIT', 0)
         timeout = crawler.settings.get('WEBDRIVER_TIMEOUT', None)
         self._page_load_timeout = crawler.settings.get( 'WEBDRIVER_PAGE_LOAD_TIMEOUT', timeout)
@@ -60,7 +62,13 @@ class WebdriverManager(object):
             cap_attr = 'desired_capabilities'
         options = copy.deepcopy(self._options)
         options[cap_attr] = self._desired_capabilities
-        self._webdriver = self._browser(**options)
+        
+        browser = self._browser_name.lower()
+
+        if not self._remote_webdriver or browser == "phantomjs":
+            self._webdriver = self._browser(**options)
+        else:
+            self._webdriver = webdriver.Remote(command_executor=self._remote_webdriver+"wd/hub",desired_capabilities={ "browserName": browser })
         # Set the following timeout related settings on the webdriver:
         # * the amount of seconds to wait when an element cannot be found.
         # * the amount of seconds to wait for a page to load.
