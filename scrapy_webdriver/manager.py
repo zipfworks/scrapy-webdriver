@@ -65,7 +65,7 @@ class WebdriverManager(object):
         
         browser = self._browser_name.lower()
 
-        if not self._remote_webdriver or browser == "phantomjs":
+        if not self._remote_webdriver:
             self._webdriver = self._browser(**options)
         else:
             #TODO: need to figure out how to pass in the browser options
